@@ -1,7 +1,6 @@
 {
   "name": "telegram-xo-bot",
-  "version": "3.0.0",
-  "description": "Telegram XO bot with singleplayer, multiplayer, leaderboard, and languages",
+  "version": "4.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
