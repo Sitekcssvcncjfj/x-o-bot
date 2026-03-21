@@ -1,7 +1,6 @@
 {
   "name": "telegram-xo-bot",
-  "version": "1.0.0",
-  "description": "Telegram XO bot",
+  "version": "2.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -10,7 +9,6 @@
     "node": ">=18"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
     "telegraf": "^4.16.3"
   }
 }
