@@ -2,8 +2,6 @@ require('dotenv').config();
 const { Telegraf, Markup } = require('telegraf');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
-
-// Kullanıcı bazlı oyunları hafızada tutuyoruz
 const games = new Map();
 
 function createEmptyBoard() {
@@ -19,7 +17,7 @@ function checkWinner(board) {
     [1, 4, 7],
     [2, 5, 8],
     [0, 4, 8],
-    [2, 4, 6],
+    [2, 4, 6]
   ];
 
   for (const [a, b, c] of wins) {
@@ -28,17 +26,16 @@ function checkWinner(board) {
     }
   }
 
-  if (board.every(cell => cell !== '')) {
-    return 'draw';
-  }
-
+  if (board.every(cell => cell !== '')) return 'draw';
   return null;
 }
 
 function getBoardKeyboard(board, gameOver = false) {
   const buttons = [];
+
   for (let row = 0; row < 3; row++) {
     const rowButtons = [];
+
     for (let col = 0; col < 3; col++) {
       const index = row * 3 + col;
       const cell = board[index] || ' ';
@@ -46,6 +43,7 @@ function getBoardKeyboard(board, gameOver = false) {
         Markup.button.callback(cell, gameOver ? 'ignore' : `move_${index}`)
       );
     }
+
     buttons.push(rowButtons);
   }
 
@@ -57,39 +55,33 @@ function getBoardKeyboard(board, gameOver = false) {
 }
 
 function botMove(board) {
-  const emptyIndexes = board
+  const empty = board
     .map((cell, index) => (cell === '' ? index : null))
-    .filter(index => index !== null);
+    .filter(v => v !== null);
 
-  if (emptyIndexes.length === 0) return board;
+  if (!empty.length) return;
 
-  const randomIndex = emptyIndexes[Math.floor(Math.random() * emptyIndexes.length)];
-  board[randomIndex] = 'O';
-  return board;
+  const move = empty[Math.floor(Math.random() * empty.length)];
+  board[move] = 'O';
 }
 
-bot.start(async (ctx) => {
-  await ctx.reply(
-    'Salam! Mən XO botuyam.\nYeni oyuna başlamaq üçün /newgame yaz.'
-  );
+bot.start((ctx) => {
+  ctx.reply('Salam! Yeni oyun üçün /newgame yaz.');
 });
 
-bot.command('newgame', async (ctx) => {
+bot.command('newgame', (ctx) => {
   const userId = ctx.from.id;
-
   const board = createEmptyBoard();
+
   games.set(userId, { board, gameOver: false });
 
-  await ctx.reply(
-    'Yeni XO oyunu başladı! Sən X-sən.',
-    getBoardKeyboard(board)
-  );
+  ctx.reply('Yeni XO oyunu başladı! Sən X-sən.', getBoardKeyboard(board));
 });
 
 bot.action('new_game', async (ctx) => {
   const userId = ctx.from.id;
-
   const board = createEmptyBoard();
+
   games.set(userId, { board, gameOver: false });
 
   await ctx.editMessageText(
@@ -103,13 +95,15 @@ bot.action(/^move_(\d+)$/, async (ctx) => {
   const game = games.get(userId);
 
   if (!game || game.gameOver) {
-    return ctx.answerCbQuery('Aktiv oyun yoxdur. /newgame yaz.');
+    await ctx.answerCbQuery('Aktiv oyun yoxdur. /newgame yaz.');
+    return;
   }
 
   const index = Number(ctx.match[1]);
 
   if (game.board[index] !== '') {
-    return ctx.answerCbQuery('Bu xana artıq doludur.');
+    await ctx.answerCbQuery('Bu xana doludur.');
+    return;
   }
 
   game.board[index] = 'X';
@@ -117,14 +111,10 @@ bot.action(/^move_(\d+)$/, async (ctx) => {
   let result = checkWinner(game.board);
   if (result) {
     game.gameOver = true;
-
-    let text = '';
-    if (result === 'X') text = 'Təbriklər, qazandın!';
-    else if (result === 'O') text = 'Bot qazandı!';
-    else text = 'Heç-heçə!';
-
+    let text = result === 'X' ? 'Təbriklər, qazandın!' : result === 'O' ? 'Bot qazandı!' : 'Heç-heçə!';
     await ctx.editMessageText(text, getBoardKeyboard(game.board, true));
-    return ctx.answerCbQuery();
+    await ctx.answerCbQuery();
+    return;
   }
 
   botMove(game.board);
@@ -132,20 +122,13 @@ bot.action(/^move_(\d+)$/, async (ctx) => {
   result = checkWinner(game.board);
   if (result) {
     game.gameOver = true;
-
-    let text = '';
-    if (result === 'X') text = 'Təbriklər, qazandın!';
-    else if (result === 'O') text = 'Bot qazandı!';
-    else text = 'Heç-heçə!';
-
+    let text = result === 'X' ? 'Təbriklər, qazandın!' : result === 'O' ? 'Bot qazandı!' : 'Heç-heçə!';
     await ctx.editMessageText(text, getBoardKeyboard(game.board, true));
-    return ctx.answerCbQuery();
+    await ctx.answerCbQuery();
+    return;
   }
 
-  await ctx.editMessageText(
-    'Sənin növbəndir:',
-    getBoardKeyboard(game.board)
-  );
+  await ctx.editMessageText('Sənin növbəndir:', getBoardKeyboard(game.board));
   await ctx.answerCbQuery();
 });
 
