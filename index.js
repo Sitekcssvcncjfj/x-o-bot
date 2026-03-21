@@ -2,7 +2,7 @@ const { Telegraf, Markup } = require('telegraf');
 const fs = require('fs');
 const path = require('path');
 
-const BOT_TOKEN = process.env.BOT_TOKEN || 'BURAYA_BOT_TOKEN';
+const BOT_TOKEN = process.env.BOT_TOKEN || '8722669683:AAHTNuh4soLWzGZmiywLzu9UwjRMsJZPgzQ';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'db.json');
 
