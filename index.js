@@ -2,7 +2,7 @@ const { Telegraf, Markup } = require('telegraf');
 const fs = require('fs');
 const path = require('path');
 
-const BOT_TOKEN = "BURAYA_TOKEN";
+const BOT_TOKEN = "8722669683:AAHTNuh4soLWzGZmiywLzu9UwjRMsJZPgzQ";
 const TURN_MS = 30000;
 
 const bot = new Telegraf(BOT_TOKEN);
