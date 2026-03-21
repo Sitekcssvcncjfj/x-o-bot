@@ -82,9 +82,11 @@ function addSingleResult(userId, result) {
   const db = loadDB();
   const id = String(userId);
   if (!db.users[id]) return;
+
   if (result === 'win') db.users[id].wins++;
   if (result === 'loss') db.users[id].losses++;
   if (result === 'draw') db.users[id].draws++;
+
   saveDB(db);
 }
 
@@ -92,9 +94,11 @@ function addMultiResult(userId, result) {
   const db = loadDB();
   const id = String(userId);
   if (!db.users[id]) return;
+
   if (result === 'win') db.users[id].multiplayerWins++;
   if (result === 'loss') db.users[id].multiplayerLosses++;
   if (result === 'draw') db.users[id].multiplayerDraws++;
+
   saveDB(db);
 }
 
@@ -112,7 +116,7 @@ function getLeaderboard() {
 }
 
 // ==============================
-// LANG
+// TEXTS
 // ==============================
 
 const texts = {
@@ -125,21 +129,16 @@ Aşağıdaki menüden seçim yapabilirsin.`,
     menuGroupGame: '👥 Grup Oyunu',
     menuStats: '📊 İstatistik',
     menuTop: '🏆 Liderlik',
-    menuLang: '�� Dil',
+    menuLang: '🌐 Dil',
     menuCancel: '🛑 Oyunu İptal Et',
     menuSupport: '💬 Destek',
     menuAddGroup: '➕ Beni Gruba Ekle',
+    menuProfile: '👤 Profil',
     chooseDifficulty: 'Zorluk seç:',
     chooseBoardSize: 'Tahta boyutunu seç:',
-    chooseMode: 'Oyun modunu seç:',
-    singleMode: '🤖 Botla Oyna',
-    groupMode: '👥 2 Oyuncu',
     easy: '🟢 Kolay',
     medium: '🟡 Orta',
     hard: '🔴 Zor',
-    size3: '3x3',
-    size4: '4x4',
-    size5: '5x5',
     gameStarted: 'Oyun başladı! Sen ❌ işaretisin.',
     yourTurn: 'Sıra sende.',
     noActiveGame: 'Aktif oyun yok.',
@@ -161,6 +160,25 @@ Aşağıdaki menüden seçim yapabilirsin.`,
 🏆 Kazanma: ${u.multiplayerWins}
 ❌ Kaybetme: ${u.multiplayerLosses}
 🤝 Berabere: ${u.multiplayerDraws}`,
+    profile: (u, points, rank) =>
+`👤 Profil Kartın
+
+🆔 ID: ${u.id}
+👋 İsim: ${u.name}
+🔗 Kullanıcı Adı: ${u.username ? '@' + u.username : '-'}
+🌐 Dil: ${u.language.toUpperCase()}
+🏆 Toplam Puan: ${points}
+🥇 Sıra: ${rank}
+
+🤖 Botla Oyun
+• Kazanma: ${u.wins}
+• Kaybetme: ${u.losses}
+• Berabere: ${u.draws}
+
+👥 Çok Oyunculu
+• Kazanma: ${u.multiplayerWins}
+• Kaybetme: ${u.multiplayerLosses}
+• Berabere: ${u.multiplayerDraws}`,
     topTitle: '🏆 Liderlik Tablosu',
     languageChoose: 'Dil seç:',
     langSetTr: 'Dil Türkçe olarak ayarlandı.',
@@ -171,7 +189,7 @@ Aşağıdaki menüden seçim yapabilirsin.`,
 `👥 ${name} bir grup oyunu başlattı!
 Tahta: ${size}x${size}
 
-Katılmak için aşağıdaki butona bas.`,
+Katılmak için aşağıdaki butona bas veya birini mention ederek davet et.`,
     join: '✅ Katıl',
     joinedGame: (xName, oName, turnName, size) =>
 `🎮 Grup oyunu başladı!
@@ -183,19 +201,30 @@ Tahta: ${size}x${size}
 İlk sıra: ${turnName}`,
     notYourTurn: 'Sıra sende değil.',
     notYourGame: 'Bu oyunda değilsin.',
-    playerXWin: (name) => `🎉 ${name} kazandı! ❌`,
-    playerOWin: (name) => `🎉 ${name} kazandı! ⭕`,
+    playerXWin: (name) => `🏆 Kazanan: ${name} ❌`,
+    playerOWin: (name) => `🏆 Kazanan: ${name} ⭕`,
     gameDraw: '🤝 Oyun berabere bitti!',
     turnText: (name, symbol) => `Sıra: ${name} ${symbol}`,
     leaderboardEmpty: 'Henüz veri yok.',
     gameCancelled: '🛑 Oyun iptal edildi.',
     noPermissionCancel: 'Bu oyunu iptal etme yetkin yok.',
-    supportText: 'Destek için aşağıdaki butona bas.',
     backMenu: '⬅️ Menü',
-    chooseLangFirst: 'Dil seç:',
     selectGroupBoard: 'Grup oyunu için tahta boyutunu seç:',
     startGroupOnly: 'Grup oyunu başlatmak için beni bir gruba ekle.',
-    selfJoinError: 'Kendi oyununa ikinci oyuncu olarak katılamazsın.'
+    selfJoinError: 'Kendi oyununa ikinci oyuncu olarak katılamazsın.',
+    supportText: 'Destek için aşağıdaki butona bas.',
+    inviteExample: 'Birini mention ederek davet etmek için örnek:\n/groupgame @kullaniciadi',
+    invitedText: (starter, invited, size) =>
+`🎯 ${starter} seni XO oyununa davet etti ${invited}
+Tahta: ${size}x${size}
+
+Katılmak için aşağıdaki butona bas.`,
+    rematchOffered: (name) => `🔁 ${name} rövanş istiyor.`,
+    rematchAccepted: '🔁 Rövanş başladı!',
+    rematchNeedBoth: 'Rövanş için iki oyuncunun da onayı gerekir.',
+    rematchWaiting: 'Diğer oyuncunun rövanşı kabul etmesi bekleniyor.',
+    mentionNotFound: 'Etiketlenen kullanıcı bulunamadı.',
+    onlyInvitedCanJoin: 'Bu oyuna sadece davet edilen kişi katılabilir.'
   },
   en: {
     welcome:
@@ -210,17 +239,12 @@ Choose an option from the menu below.`,
     menuCancel: '🛑 Cancel Game',
     menuSupport: '💬 Support',
     menuAddGroup: '➕ Add Me To Group',
+    menuProfile: '👤 Profile',
     chooseDifficulty: 'Choose difficulty:',
     chooseBoardSize: 'Choose board size:',
-    chooseMode: 'Choose game mode:',
-    singleMode: '🤖 Play vs Bot',
-    groupMode: '👥 2 Players',
     easy: '🟢 Easy',
     medium: '🟡 Medium',
     hard: '🔴 Hard',
-    size3: '3x3',
-    size4: '4x4',
-    size5: '5x5',
     gameStarted: 'Game started! You are ❌.',
     yourTurn: 'Your turn.',
     noActiveGame: 'No active game.',
@@ -242,6 +266,25 @@ Choose an option from the menu below.`,
 🏆 Wins: ${u.multiplayerWins}
 ❌ Losses: ${u.multiplayerLosses}
 🤝 Draws: ${u.multiplayerDraws}`,
+    profile: (u, points, rank) =>
+`👤 Your Profile
+
+🆔 ID: ${u.id}
+👋 Name: ${u.name}
+🔗 Username: ${u.username ? '@' + u.username : '-'}
+🌐 Language: ${u.language.toUpperCase()}
+🏆 Total Points: ${points}
+🥇 Rank: ${rank}
+
+🤖 Vs Bot
+• Wins: ${u.wins}
+• Losses: ${u.losses}
+• Draws: ${u.draws}
+
+👥 Multiplayer
+• Wins: ${u.multiplayerWins}
+• Losses: ${u.multiplayerLosses}
+• Draws: ${u.multiplayerDraws}`,
     topTitle: '🏆 Leaderboard',
     languageChoose: 'Choose language:',
     langSetTr: 'Dil Türkçe olarak ayarlandı.',
@@ -252,7 +295,7 @@ Choose an option from the menu below.`,
 `👥 ${name} started a group game!
 Board: ${size}x${size}
 
-Press the button below to join.`,
+Press the button below to join or invite someone by mention.`,
     join: '✅ Join',
     joinedGame: (xName, oName, turnName, size) =>
 `🎮 Group game started!
@@ -264,19 +307,30 @@ Board: ${size}x${size}
 First turn: ${turnName}`,
     notYourTurn: 'It is not your turn.',
     notYourGame: 'You are not in this game.',
-    playerXWin: (name) => `🎉 ${name} won! ❌`,
-    playerOWin: (name) => `🎉 ${name} won! ⭕`,
+    playerXWin: (name) => `🏆 Winner: ${name} ❌`,
+    playerOWin: (name) => `🏆 Winner: ${name} ⭕`,
     gameDraw: '🤝 The game ended in a draw!',
     turnText: (name, symbol) => `Turn: ${name} ${symbol}`,
     leaderboardEmpty: 'No data yet.',
     gameCancelled: '🛑 Game cancelled.',
     noPermissionCancel: 'You do not have permission to cancel this game.',
-    supportText: 'Tap the button below for support.',
     backMenu: '⬅️ Menu',
-    chooseLangFirst: 'Choose language:',
     selectGroupBoard: 'Choose board size for group game:',
     startGroupOnly: 'Add me to a group to start a group game.',
-    selfJoinError: 'You cannot join your own game as second player.'
+    selfJoinError: 'You cannot join your own game as second player.',
+    supportText: 'Tap the button below for support.',
+    inviteExample: 'Example invite:\n/groupgame @username',
+    invitedText: (starter, invited, size) =>
+`🎯 ${starter} invited you to XO game ${invited}
+Board: ${size}x${size}
+
+Press the button below to join.`,
+    rematchOffered: (name) => `🔁 ${name} wants a rematch.`,
+    rematchAccepted: '🔁 Rematch started!',
+    rematchNeedBoth: 'Both players must confirm the rematch.',
+    rematchWaiting: 'Waiting for the other player to accept rematch.',
+    mentionNotFound: 'Mentioned user not found.',
+    onlyInvitedCanJoin: 'Only the invited user can join this game.'
   }
 };
 
@@ -288,11 +342,24 @@ function t(userId, key, ...args) {
 }
 
 // ==============================
-// GAMES
+// STATE
 // ==============================
 
 const singleGames = new Map(); // userId
 const groupGames = new Map(); // chatId
+
+// group game structure:
+// {
+//   type: 'pending'|'active'|'finished',
+//   size,
+//   board,
+//   playerX,
+//   playerO,
+//   invitedUserId: number|null,
+//   turn: 'X'|'O',
+//   gameOver: boolean,
+//   rematch: { x: boolean, o: boolean }|null
+// }
 
 // ==============================
 // HELPERS
@@ -300,7 +367,19 @@ const groupGames = new Map(); // chatId
 
 function getDisplayName(user) {
   if (!user) return 'User';
-  return user.username ? `@${user.username}` : (user.first_name || 'User');
+  return user.username ? `@${user.username}` : user.first_name || 'User';
+}
+
+function mentionHtml(user) {
+  const name = user.first_name || user.username || 'User';
+  return `<a href="tg://user?id=${user.id}">${escapeHtml(name)}</a>`;
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function buildLeaderboardText(requesterId) {
@@ -316,21 +395,31 @@ function buildLeaderboardText(requesterId) {
   return text;
 }
 
+function getProfileText(userId) {
+  const u = getUser(userId);
+  if (!u) return 'Profil bulunamadı.';
+
+  const list = getLeaderboard();
+  const foundIndex = list.findIndex(item => String(item.id) === String(userId));
+  const rank = foundIndex >= 0 ? foundIndex + 1 : '-';
+  const points = ((u.wins + u.multiplayerWins) * 3) + (u.draws + u.multiplayerDraws);
+
+  return t(userId, 'profile', u, points, rank);
+}
+
 function createBoard(size) {
   return Array(size * size).fill('');
 }
 
 function neededToWin(size) {
   if (size <= 4) return size;
-  return 4; // 5x5 için 4 yan yana yapalım ki oyun çok uzamasın
+  return 4;
 }
 
 function checkWinner(board, size) {
   const target = neededToWin(size);
-
   const get = (r, c) => board[r * size + c];
 
-  // satırlar
   for (let r = 0; r < size; r++) {
     for (let c = 0; c <= size - target; c++) {
       const first = get(r, c);
@@ -346,7 +435,6 @@ function checkWinner(board, size) {
     }
   }
 
-  // sütunlar
   for (let c = 0; c < size; c++) {
     for (let r = 0; r <= size - target; r++) {
       const first = get(r, c);
@@ -362,7 +450,6 @@ function checkWinner(board, size) {
     }
   }
 
-  // çapraz sağ aşağı
   for (let r = 0; r <= size - target; r++) {
     for (let c = 0; c <= size - target; c++) {
       const first = get(r, c);
@@ -378,7 +465,6 @@ function checkWinner(board, size) {
     }
   }
 
-  // çapraz sol aşağı
   for (let r = 0; r <= size - target; r++) {
     for (let c = target - 1; c < size; c++) {
       const first = get(r, c);
@@ -421,7 +507,7 @@ function boardKeyboard(board, size, prefix, gameOver = false, extraRows = []) {
     rows.push(row);
   }
 
-  for (const row of extraRows) rows.push(row);
+  extraRows.forEach(row => rows.push(row));
   return Markup.inlineKeyboard(rows);
 }
 
@@ -439,7 +525,10 @@ function mainMenu(userId) {
       Markup.button.callback(texts[lang].menuTop, 'menu_top')
     ],
     [
-      Markup.button.callback(texts[lang].menuLang, 'menu_lang'),
+      Markup.button.callback(texts[lang].menuProfile, 'menu_profile'),
+      Markup.button.callback(texts[lang].menuLang, 'menu_lang')
+    ],
+    [
       Markup.button.callback(texts[lang].menuCancel, 'menu_cancel')
     ],
     [
@@ -454,16 +543,22 @@ function languageKeyboard() {
     [
       Markup.button.callback('🇹🇷 Türkçe', 'lang_tr'),
       Markup.button.callback('🇬🇧 English', 'lang_en')
+    ],
+    [
+      Markup.button.callback('⬅️ Menu', 'back_menu')
     ]
   ]);
 }
 
-function boardSizeKeyboard(prefix = 'size_single') {
+function boardSizeKeyboard(prefix) {
   return Markup.inlineKeyboard([
     [
       Markup.button.callback('3x3', `${prefix}_3`),
       Markup.button.callback('4x4', `${prefix}_4`),
       Markup.button.callback('5x5', `${prefix}_5`)
+    ],
+    [
+      Markup.button.callback('⬅️ Menu', 'back_menu')
     ]
   ]);
 }
@@ -478,7 +573,9 @@ function difficultyKeyboard(userId, size) {
       Markup.button.callback(texts[lang].medium, `diff_${size}_medium`),
       Markup.button.callback(texts[lang].hard, `diff_${size}_hard`)
     ],
-    [Markup.button.callback(texts[lang].backMenu, 'back_menu')]
+    [
+      Markup.button.callback(texts[lang].backMenu, 'back_menu')
+    ]
   ]);
 }
 
@@ -487,27 +584,41 @@ function groupJoinKeyboard(userId, size) {
   const lang = user?.language || 'tr';
 
   return Markup.inlineKeyboard([
-    [Markup.button.callback(texts[lang].join, `group_join_${size}`)],
-    [Markup.button.callback(texts[lang].backMenu, 'back_menu')]
+    [
+      Markup.button.callback(texts[lang].join, `group_join_${size}`)
+    ],
+    [
+      Markup.button.callback(texts[lang].backMenu, 'back_menu')
+    ]
   ]);
 }
 
-function afterGameButtons(userId, mode, size, difficulty = 'medium') {
+function singleAfterGameButtons(userId, size, difficulty) {
   const user = getUser(userId);
   const lang = user?.language || 'tr';
 
-  if (mode === 'single') {
-    return [
-      [
-        Markup.button.callback(texts[lang].rematch, `rematch_single_${size}_${difficulty}`),
-        Markup.button.callback(texts[lang].newGame, 'menu_newgame')
-      ],
-      [Markup.button.callback(texts[lang].backMenu, 'back_menu')]
-    ];
-  }
+  return [
+    [
+      Markup.button.callback(texts[lang].rematch, `rematch_single_${size}_${difficulty}`),
+      Markup.button.callback(texts[lang].newGame, 'menu_newgame')
+    ],
+    [
+      Markup.button.callback(texts[lang].backMenu, 'back_menu')
+    ]
+  ];
+}
+
+function groupAfterGameButtons(userId, size) {
+  const user = getUser(userId);
+  const lang = user?.language || 'tr';
 
   return [
-    [Markup.button.callback(texts[lang].backMenu, 'back_menu')]
+    [
+      Markup.button.callback(texts[lang].rematch, `group_rematch_${size}`)
+    ],
+    [
+      Markup.button.callback(texts[lang].backMenu, 'back_menu')
+    ]
   ];
 }
 
@@ -547,6 +658,7 @@ function bestCenterOrNear(board, size) {
   for (const c of centers) {
     if (board[c] === '') return c;
   }
+
   return null;
 }
 
@@ -567,14 +679,10 @@ function aiMedium(board, size) {
   return randomMove(board);
 }
 
-// minimax sadece 3x3 için
 function aiHard3x3(board) {
-  function check3(b) {
-    return checkWinner(b, 3);
-  }
-
   function minimax(b, depth, isMax) {
-    const result = check3(b);
+    const result = checkWinner(b, 3);
+
     if (result === 'O') return 10 - depth;
     if (result === 'X') return depth - 10;
     if (result === 'draw') return 0;
@@ -650,24 +758,9 @@ bot.start(async (ctx) => {
   await ctx.reply(t(ctx.from.id, 'welcome'), mainMenu(ctx.from.id));
 });
 
-bot.command('start', async (ctx) => {
-  ensureUser(ctx.from);
-  await ctx.reply(t(ctx.from.id, 'welcome'), mainMenu(ctx.from.id));
-});
-
 bot.command('newgame', async (ctx) => {
   ensureUser(ctx.from);
   await ctx.reply(t(ctx.from.id, 'chooseBoardSize'), boardSizeKeyboard('size_single'));
-});
-
-bot.command('groupgame', async (ctx) => {
-  ensureUser(ctx.from);
-
-  if (!['group', 'supergroup'].includes(ctx.chat.type)) {
-    return ctx.reply(t(ctx.from.id, 'onlyGroups'));
-  }
-
-  await ctx.reply(t(ctx.from.id, 'selectGroupBoard'), boardSizeKeyboard('size_group'));
 });
 
 bot.command('stats', async (ctx) => {
@@ -684,6 +777,11 @@ bot.command('top', async (ctx) => {
 bot.command('language', async (ctx) => {
   ensureUser(ctx.from);
   await ctx.reply(t(ctx.from.id, 'languageChoose'), languageKeyboard());
+});
+
+bot.command('profile', async (ctx) => {
+  ensureUser(ctx.from);
+  await ctx.reply(getProfileText(ctx.from.id), mainMenu(ctx.from.id));
 });
 
 bot.command('cancelgame', async (ctx) => {
@@ -709,6 +807,24 @@ bot.command('cancelgame', async (ctx) => {
   return ctx.reply(t(userId, 'noActiveGame'));
 });
 
+bot.command('groupgame', async (ctx) => {
+  ensureUser(ctx.from);
+
+  if (!['group', 'supergroup'].includes(ctx.chat.type)) {
+    return ctx.reply(t(ctx.from.id, 'onlyGroups'));
+  }
+
+  const mention = ctx.message.text.split(' ')[1] || null;
+  if (mention && !mention.startsWith('@')) {
+    return ctx.reply(t(ctx.from.id, 'inviteExample'));
+  }
+
+  const pendingInvites = ctx.state || {};
+  pendingInvites.groupMention = mention;
+
+  await ctx.reply(t(ctx.from.id, 'selectGroupBoard'), boardSizeKeyboard('size_group'));
+});
+
 // ==============================
 // MENU ACTIONS
 // ==============================
@@ -721,6 +837,7 @@ bot.action('menu_newgame', async (ctx) => {
 
 bot.action('menu_groupgame', async (ctx) => {
   ensureUser(ctx.from);
+
   if (!['group', 'supergroup'].includes(ctx.chat.type)) {
     await ctx.editMessageText(
       t(ctx.from.id, 'startGroupOnly'),
@@ -752,6 +869,12 @@ bot.action('menu_top', async (ctx) => {
 bot.action('menu_lang', async (ctx) => {
   ensureUser(ctx.from);
   await ctx.editMessageText(t(ctx.from.id, 'languageChoose'), languageKeyboard());
+  await ctx.answerCbQuery();
+});
+
+bot.action('menu_profile', async (ctx) => {
+  ensureUser(ctx.from);
+  await ctx.editMessageText(getProfileText(ctx.from.id), mainMenu(ctx.from.id));
   await ctx.answerCbQuery();
 });
 
@@ -806,7 +929,7 @@ bot.action('lang_en', async (ctx) => {
 });
 
 // ==============================
-// SINGLEPLAYER FLOW
+// SINGLEPLAYER
 // ==============================
 
 bot.action(/^size_single_(3|4|5)$/, async (ctx) => {
@@ -818,31 +941,27 @@ bot.action(/^size_single_(3|4|5)$/, async (ctx) => {
 
 bot.action(/^diff_(3|4|5)_(easy|medium|hard)$/, async (ctx) => {
   ensureUser(ctx.from);
-
   const size = Number(ctx.match[1]);
   const difficulty = ctx.match[2];
   const userId = ctx.from.id;
 
-  const game = {
-    type: 'single',
+  singleGames.set(userId, {
     size,
     board: createBoard(size),
     difficulty,
-    gameOver: false,
-    lastStarter: 'user'
-  };
-
-  singleGames.set(userId, game);
+    gameOver: false
+  });
 
   await ctx.editMessageText(
     `${t(userId, 'gameStarted')}\n\n🎲 Tahta: ${size}x${size}`,
-    boardKeyboard(game.board, size, 'singlemove')
+    boardKeyboard(createBoard(size), size, 'singlemove')
   );
   await ctx.answerCbQuery();
 });
 
 bot.action(/^singlemove_(\d+)$/, async (ctx) => {
   ensureUser(ctx.from);
+
   const userId = ctx.from.id;
   const game = singleGames.get(userId);
 
@@ -884,16 +1003,17 @@ bot.action(/^singlemove_(\d+)$/, async (ctx) => {
         game.size,
         'singlemove',
         true,
-        afterGameButtons(userId, 'single', game.size, game.difficulty)
+        singleAfterGameButtons(userId, game.size, game.difficulty)
       )
     );
+
     await ctx.answerCbQuery();
     return;
   }
 
-  const botMove = getAiMove(game.board, game.size, game.difficulty);
-  if (botMove !== undefined && botMove !== null) {
-    game.board[botMove] = 'O';
+  const move = getAiMove(game.board, game.size, game.difficulty);
+  if (move !== null && move !== undefined) {
+    game.board[move] = 'O';
   }
 
   result = checkWinner(game.board, game.size);
@@ -920,9 +1040,10 @@ bot.action(/^singlemove_(\d+)$/, async (ctx) => {
         game.size,
         'singlemove',
         true,
-        afterGameButtons(userId, 'single', game.size, game.difficulty)
+        singleAfterGameButtons(userId, game.size, game.difficulty)
       )
     );
+
     await ctx.answerCbQuery();
     return;
   }
@@ -931,36 +1052,33 @@ bot.action(/^singlemove_(\d+)$/, async (ctx) => {
     `${t(userId, 'yourTurn')}\n\n🎲 Tahta: ${game.size}x${game.size}`,
     boardKeyboard(game.board, game.size, 'singlemove')
   );
+
   await ctx.answerCbQuery();
 });
 
 bot.action(/^rematch_single_(3|4|5)_(easy|medium|hard)$/, async (ctx) => {
   ensureUser(ctx.from);
-
   const size = Number(ctx.match[1]);
   const difficulty = ctx.match[2];
   const userId = ctx.from.id;
 
-  const game = {
-    type: 'single',
+  singleGames.set(userId, {
     size,
     board: createBoard(size),
     difficulty,
-    gameOver: false,
-    lastStarter: 'user'
-  };
-
-  singleGames.set(userId, game);
+    gameOver: false
+  });
 
   await ctx.editMessageText(
     `${t(userId, 'gameStarted')}\n\n🎲 Tahta: ${size}x${size}`,
-    boardKeyboard(game.board, size, 'singlemove')
+    boardKeyboard(createBoard(size), size, 'singlemove')
   );
+
   await ctx.answerCbQuery();
 });
 
 // ==============================
-// GROUP FLOW
+// GROUP
 // ==============================
 
 bot.action(/^size_group_(3|4|5)$/, async (ctx) => {
@@ -979,20 +1097,30 @@ bot.action(/^size_group_(3|4|5)$/, async (ctx) => {
     return;
   }
 
+  let invitedUserId = null;
+  let inviteText = '';
+
+  if (ctx.update.callback_query?.message?.reply_to_message?.entities) {
+    // boş
+  }
+
   groupGames.set(chatId, {
     type: 'pending',
     size,
     board: createBoard(size),
     playerX: ctx.from,
     playerO: null,
+    invitedUserId,
     turn: 'X',
-    gameOver: false
+    gameOver: false,
+    rematch: null
   });
 
   await ctx.editMessageText(
-    t(ctx.from.id, 'groupGameCreated', getDisplayName(ctx.from), size),
+    `${t(ctx.from.id, 'groupGameCreated', getDisplayName(ctx.from), size)}\n\n${t(ctx.from.id, 'inviteExample')}${inviteText ? '\n' + inviteText : ''}`,
     groupJoinKeyboard(ctx.from.id, size)
   );
+
   await ctx.answerCbQuery();
 });
 
@@ -1017,9 +1145,15 @@ bot.action(/^group_join_(3|4|5)$/, async (ctx) => {
     return;
   }
 
+  if (game.invitedUserId && game.invitedUserId !== ctx.from.id) {
+    await ctx.answerCbQuery(t(ctx.from.id, 'onlyInvitedCanJoin'));
+    return;
+  }
+
   game.playerO = ctx.from;
   game.type = 'active';
   game.turn = 'X';
+  game.rematch = null;
 
   const xName = getDisplayName(game.playerX);
   const oName = getDisplayName(game.playerO);
@@ -1029,6 +1163,7 @@ bot.action(/^group_join_(3|4|5)$/, async (ctx) => {
     t(game.playerX.id, 'joinedGame', xName, oName, turnName, game.size),
     boardKeyboard(game.board, game.size, 'groupmove')
   );
+
   await ctx.answerCbQuery();
 });
 
@@ -1043,15 +1178,13 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
     return;
   }
 
-  const currentPlayerId = game.turn === 'X' ? game.playerX.id : game.playerO.id;
-  const currentSymbol = game.turn === 'X' ? '❌' : '⭕';
   const allPlayers = [game.playerX.id, game.playerO.id];
-
   if (!allPlayers.includes(ctx.from.id)) {
     await ctx.answerCbQuery(t(ctx.from.id, 'notYourGame'));
     return;
   }
 
+  const currentPlayerId = game.turn === 'X' ? game.playerX.id : game.playerO.id;
   if (ctx.from.id !== currentPlayerId) {
     await ctx.answerCbQuery(t(ctx.from.id, 'notYourTurn'));
     return;
@@ -1070,45 +1203,232 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
 
   if (result) {
     game.gameOver = true;
+    game.type = 'finished';
+    game.rematch = { x: false, o: false };
 
     if (result === 'X') {
       addMultiResult(game.playerX.id, 'win');
       addMultiResult(game.playerO.id, 'loss');
 
       await ctx.editMessageText(
-        t(game.playerX.id, 'playerXWin', getDisplayName(game.playerX)),
-        boardKeyboard(game.board, game.size, 'groupmove', true, afterGameButtons(game.playerX.id, 'group', game.size))
+        `${t(game.playerX.id, 'playerXWin', getDisplayName(game.playerX))}\n\n🎲 Tahta: ${game.size}x${game.size}`,
+        boardKeyboard(
+          game.board,
+          game.size,
+          'groupmove',
+          true,
+          groupAfterGameButtons(game.playerX.id, game.size)
+        )
       );
     } else if (result === 'O') {
       addMultiResult(game.playerO.id, 'win');
       addMultiResult(game.playerX.id, 'loss');
 
       await ctx.editMessageText(
-        t(game.playerO.id, 'playerOWin', getDisplayName(game.playerO)),
-        boardKeyboard(game.board, game.size, 'groupmove', true, afterGameButtons(game.playerO.id, 'group', game.size))
+        `${t(game.playerO.id, 'playerOWin', getDisplayName(game.playerO))}\n\n🎲 Tahta: ${game.size}x${game.size}`,
+        boardKeyboard(
+          game.board,
+          game.size,
+          'groupmove',
+          true,
+          groupAfterGameButtons(game.playerO.id, game.size)
+        )
       );
     } else {
       addMultiResult(game.playerX.id, 'draw');
       addMultiResult(game.playerO.id, 'draw');
 
       await ctx.editMessageText(
-        t(game.playerX.id, 'gameDraw'),
-        boardKeyboard(game.board, game.size, 'groupmove', true, afterGameButtons(game.playerX.id, 'group', game.size))
+        `${t(game.playerX.id, 'gameDraw')}\n\n🎲 Tahta: ${game.size}x${game.size}`,
+        boardKeyboard(
+          game.board,
+          game.size,
+          'groupmove',
+          true,
+          groupAfterGameButtons(game.playerX.id, game.size)
+        )
       );
     }
 
-    groupGames.delete(chatId);
     await ctx.answerCbQuery();
     return;
   }
 
   game.turn = game.turn === 'X' ? 'O' : 'X';
-
   const nextPlayer = game.turn === 'X' ? game.playerX : game.playerO;
   const nextSymbol = game.turn === 'X' ? '❌' : '⭕';
 
   await ctx.editMessageText(
     t(ctx.from.id, 'turnText', getDisplayName(nextPlayer), nextSymbol),
+    boardKeyboard(game.board, game.size, 'groupmove')
+  );
+
+  await ctx.answerCbQuery();
+});
+
+bot.action(/^group_rematch_(3|4|5)$/, async (ctx) => {
+  ensureUser(ctx.from);
+
+  const chatId = ctx.chat.id;
+  const game = groupGames.get(chatId);
+
+  if (!game || game.type !== 'finished') {
+    await ctx.answerCbQuery(t(ctx.from.id, 'noActiveGame'));
+    return;
+  }
+
+  if (![game.playerX.id, game.playerO.id].includes(ctx.from.id)) {
+    await ctx.answerCbQuery(t(ctx.from.id, 'notYourGame'));
+    return;
+  }
+
+  if (!game.rematch) {
+    game.rematch = { x: false, o: false };
+  }
+
+  if (ctx.from.id === game.playerX.id) game.rematch.x = true;
+  if (ctx.from.id === game.playerO.id) game.rematch.o = true;
+
+  if (game.rematch.x && game.rematch.o) {
+    game.type = 'active';
+    game.gameOver = false;
+    game.board = createBoard(game.size);
+    game.turn = 'X';
+    game.rematch = { x: false, o: false };
+
+    await ctx.editMessageText(
+      `${t(ctx.from.id, 'rematchAccepted')}\n\n${t(ctx.from.id, 'joinedGame', getDisplayName(game.playerX), getDisplayName(game.playerO), getDisplayName(game.playerX), game.size)}`,
+      boardKeyboard(game.board, game.size, 'groupmove')
+    );
+
+    await ctx.answerCbQuery();
+    return;
+  }
+
+  await ctx.answerCbQuery(t(ctx.from.id, 'rematchWaiting'));
+});
+
+// ==============================
+// MENTION BASED INVITE
+// ==============================
+
+bot.on('text', async (ctx, next) => {
+  try {
+    ensureUser(ctx.from);
+
+    const text = ctx.message.text || '';
+    if (!text.startsWith('/groupgame')) return next();
+
+    if (!['group', 'supergroup'].includes(ctx.chat.type)) {
+      return;
+    }
+
+    const parts = text.trim().split(/\s+/);
+    const mention = parts[1];
+
+    if (!mention || !mention.startsWith('@')) {
+      return;
+    }
+
+    const chatId = ctx.chat.id;
+
+    if (groupGames.has(chatId)) {
+      await ctx.reply(t(ctx.from.id, 'gameAlreadyExists'));
+      return;
+    }
+
+    await ctx.reply(t(ctx.from.id, 'selectGroupBoard'), Markup.inlineKeyboard([
+      [
+        Markup.button.callback(`3x3 | ${mention}`, `size_group_invite_3_${mention.slice(1)}`),
+        Markup.button.callback(`4x4 | ${mention}`, `size_group_invite_4_${mention.slice(1)}`)
+      ],
+      [
+        Markup.button.callback(`5x5 | ${mention}`, `size_group_invite_5_${mention.slice(1)}`)
+      ],
+      [
+        Markup.button.callback(t(ctx.from.id, 'backMenu'), 'back_menu')
+      ]
+    ]));
+  } catch (e) {
+    console.error(e);
+  }
+});
+
+bot.action(/^size_group_invite_(3|4|5)_(.+)$/, async (ctx) => {
+  ensureUser(ctx.from);
+
+  const size = Number(ctx.match[1]);
+  const username = ctx.match[2];
+  const chatId = ctx.chat.id;
+
+  if (!['group', 'supergroup'].includes(ctx.chat.type)) {
+    await ctx.answerCbQuery(t(ctx.from.id, 'onlyGroups'));
+    return;
+  }
+
+  if (groupGames.has(chatId)) {
+    await ctx.answerCbQuery(t(ctx.from.id, 'gameAlreadyExists'));
+    return;
+  }
+
+  groupGames.set(chatId, {
+    type: 'pending',
+    size,
+    board: createBoard(size),
+    playerX: ctx.from,
+    playerO: null,
+    invitedUserId: null,
+    invitedUsername: username.toLowerCase(),
+    turn: 'X',
+    gameOver: false,
+    rematch: null
+  });
+
+  await ctx.editMessageText(
+    t(ctx.from.id, 'invitedText', getDisplayName(ctx.from), '@' + username, size),
+    Markup.inlineKeyboard([
+      [Markup.button.callback(t(ctx.from.id, 'join'), `group_join_invited_${size}_${username.toLowerCase()}`)],
+      [Markup.button.callback(t(ctx.from.id, 'backMenu'), 'back_menu')]
+    ])
+  );
+
+  await ctx.answerCbQuery();
+});
+
+bot.action(/^group_join_invited_(3|4|5)_(.+)$/, async (ctx) => {
+  ensureUser(ctx.from);
+
+  const chatId = ctx.chat.id;
+  const game = groupGames.get(chatId);
+
+  if (!game) {
+    await ctx.answerCbQuery(t(ctx.from.id, 'noActiveGame'));
+    return;
+  }
+
+  if (game.type !== 'pending') {
+    await ctx.answerCbQuery(t(ctx.from.id, 'gameAlreadyExists'));
+    return;
+  }
+
+  if (game.playerX.id === ctx.from.id) {
+    await ctx.answerCbQuery(t(ctx.from.id, 'selfJoinError'));
+    return;
+  }
+
+  const currentUsername = (ctx.from.username || '').toLowerCase();
+  if (game.invitedUsername && currentUsername !== game.invitedUsername) {
+    await ctx.answerCbQuery(t(ctx.from.id, 'onlyInvitedCanJoin'));
+    return;
+  }
+
+  game.playerO = ctx.from;
+  game.type = 'active';
+  game.turn = 'X';
+  game.rematch = null;
+
+  await ctx.editMessageText(
+    t(ctx.from.id, 'joinedGame', getDisplayName(game.playerX), getDisplayName(game.playerO), getDisplayName(game.playerX), game.size),
     boardKeyboard(game.board, game.size, 'groupmove')
   );
 
