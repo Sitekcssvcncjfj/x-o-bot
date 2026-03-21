@@ -1,7 +1,7 @@
 {
   "name": "telegram-xo-bot",
-  "version": "5.0.0",
-  "description": "Telegram XO bot advanced single file",
+  "version": "6.0.0",
+  "description": "Advanced Telegram XO bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
