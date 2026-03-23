@@ -1,7 +1,7 @@
 {
   "name": "telegram-xo-bot",
-  "version": "7.0.0",
-  "description": "Stable Telegram XO bot",
+  "version": "8.0.0",
+  "description": "Fast Telegram XO bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
