@@ -13,6 +13,7 @@ const DATA_FILE = path.join(DATA_DIR, 'db.json');
 const BOT_USERNAME = 'KGBXOBOT';
 const SUPPORT_LINK = 'https://t.me/KGBotomasyon';
 const ADD_GROUP_LINK = `https://t.me/${BOT_USERNAME}?startgroup=true`;
+const GAME_TIMEOUT_MS = 5 * 60 * 1000; // 5 dakika
 
 const bot = new Telegraf(BOT_TOKEN);
 const processingLocks = new Set();
@@ -290,7 +291,8 @@ Tahta: ${size}x${size}
 Katılmak için aşağıdaki butona bas.`,
     rematchAccepted: '🔁 Rövanş başladı!',
     rematchWaiting: 'Diğer oyuncunun rövanşı kabul etmesi bekleniyor.',
-    onlyInvitedCanJoin: 'Bu oyuna sadece davet edilen kişi katılabilir.'
+    onlyInvitedCanJoin: 'Bu oyuna sadece davet edilen kişi katılabilir.',
+    timeoutCancelled: '⏰ 5 dakika işlem yapılmadığı için oyun iptal edildi.'
   },
   en: {
     welcome:
@@ -392,7 +394,8 @@ Board: ${size}x${size}
 Press the button below to join.`,
     rematchAccepted: '🔁 Rematch started!',
     rematchWaiting: 'Waiting for the other player to accept rematch.',
-    onlyInvitedCanJoin: 'Only the invited user can join this game.'
+    onlyInvitedCanJoin: 'Only the invited user can join this game.',
+    timeoutCancelled: '⏰ The game was cancelled because there was no activity for 5 minutes.'
   }
 };
 
@@ -987,7 +990,8 @@ bot.action(/^diff_(3|4)_(easy|medium|hard)$/, async (ctx) => {
       size,
       board: createBoard(size),
       difficulty,
-      gameOver: false
+      gameOver: false,
+      lastActivity: Date.now()
     };
 
     singleGames.set(userId, game);
@@ -1013,6 +1017,8 @@ bot.action(/^singlemove_(\d+)$/, async (ctx) => {
       await safeAnswerCbQuery(ctx, t(userId, 'noActiveGame'));
       return;
     }
+
+    game.lastActivity = Date.now();
 
     const index = Number(ctx.match[1]);
 
@@ -1053,6 +1059,7 @@ bot.action(/^singlemove_(\d+)$/, async (ctx) => {
     const move = getAiMove(game.board, game.size, game.difficulty);
     if (move !== undefined && move !== null) {
       game.board[move] = 'O';
+      game.lastActivity = Date.now();
     }
 
     result = checkWinner(game.board, game.size);
@@ -1104,7 +1111,8 @@ bot.action(/^rematch_single_(3|4)_(easy|medium|hard)$/, async (ctx) => {
       size,
       board: createBoard(size),
       difficulty,
-      gameOver: false
+      gameOver: false,
+      lastActivity: Date.now()
     };
 
     singleGames.set(userId, game);
@@ -1149,7 +1157,8 @@ bot.action(/^size_group_(3|4)$/, async (ctx) => {
       invitedUsername: null,
       turn: 'X',
       gameOver: false,
-      rematch: null
+      rematch: null,
+      lastActivity: Date.now()
     });
 
     await safeEditMessageText(
@@ -1184,7 +1193,8 @@ bot.action(/^size_group_invite_(3|4)_(.+)$/, async (ctx) => {
       invitedUsername: username,
       turn: 'X',
       gameOver: false,
-      rematch: null
+      rematch: null,
+      lastActivity: Date.now()
     });
 
     await safeEditMessageText(
@@ -1231,6 +1241,7 @@ bot.action(/^group_join_(3|4)$/, async (ctx) => {
     game.type = 'active';
     game.turn = 'X';
     game.rematch = null;
+    game.lastActivity = Date.now();
 
     const xName = getDisplayName(game.playerX);
     const oName = getDisplayName(game.playerO);
@@ -1278,6 +1289,7 @@ bot.action(/^group_join_invited_(3|4)_(.+)$/, async (ctx) => {
     game.type = 'active';
     game.turn = 'X';
     game.rematch = null;
+    game.lastActivity = Date.now();
 
     await safeEditMessageText(
       ctx,
@@ -1313,6 +1325,8 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
       return;
     }
 
+    game.lastActivity = Date.now();
+
     const index = Number(ctx.match[1]);
     if (game.board[index] !== '') {
       await safeAnswerCbQuery(ctx, t(ctx.from.id, 'cellBusy'));
@@ -1327,6 +1341,7 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
       game.gameOver = true;
       game.type = 'finished';
       game.rematch = { x: false, o: false };
+      game.lastActivity = Date.now();
 
       if (result === 'X') {
         addMultiResult(game.playerX.id, 'win');
@@ -1362,6 +1377,8 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
     }
 
     game.turn = game.turn === 'X' ? 'O' : 'X';
+    game.lastActivity = Date.now();
+
     const nextPlayer = game.turn === 'X' ? game.playerX : game.playerO;
     const nextSymbol = game.turn === 'X' ? '❌' : '⭕';
 
@@ -1399,12 +1416,15 @@ bot.action(/^group_rematch_(3|4)$/, async (ctx) => {
     if (ctx.from.id === game.playerX.id) game.rematch.x = true;
     if (ctx.from.id === game.playerO.id) game.rematch.o = true;
 
+    game.lastActivity = Date.now();
+
     if (game.rematch.x && game.rematch.o) {
       game.type = 'active';
       game.gameOver = false;
       game.board = createBoard(game.size);
       game.turn = 'X';
       game.rematch = { x: false, o: false };
+      game.lastActivity = Date.now();
 
       await safeEditMessageText(
         ctx,
@@ -1419,6 +1439,43 @@ bot.action(/^group_rematch_(3|4)$/, async (ctx) => {
     await safeAnswerCbQuery(ctx, t(ctx.from.id, 'rematchWaiting'));
   }, 'group_rematch');
 });
+
+// ==============================
+// TIMEOUT CLEANER
+// ==============================
+
+setInterval(async () => {
+  const now = Date.now();
+
+  for (const [userId, game] of singleGames.entries()) {
+    if (!game || game.gameOver) continue;
+
+    if (now - game.lastActivity > GAME_TIMEOUT_MS) {
+      singleGames.delete(userId);
+
+      try {
+        await bot.telegram.sendMessage(userId, t(userId, 'timeoutCancelled'));
+      } catch (e) {
+        console.error('Single timeout message error:', e.message);
+      }
+    }
+  }
+
+  for (const [chatId, game] of groupGames.entries()) {
+    if (!game) continue;
+
+    if (now - game.lastActivity > GAME_TIMEOUT_MS) {
+      groupGames.delete(chatId);
+
+      try {
+        const langUserId = game.playerX?.id || 0;
+        await bot.telegram.sendMessage(chatId, t(langUserId, 'timeoutCancelled'));
+      } catch (e) {
+        console.error('Group timeout message error:', e.message);
+      }
+    }
+  }
+}, 60 * 1000);
 
 // ==============================
 // IGNORE
