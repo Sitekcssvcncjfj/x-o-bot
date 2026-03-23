@@ -184,16 +184,18 @@ Aşağıdaki menüden seçim yapabilirsin.`,
     langSetTr: 'Dil Türkçe olarak ayarlandı.',
     langSetEn: 'Language set to English.',
     onlyGroups: 'Bu özellik sadece gruplarda kullanılabilir.',
-    gameAlreadyExists: 'Bu grupta zaten aktif veya bekleyen bir oyun var.',
-    groupGameCreated: (name, size) =>
+    gameAlreadyExists: 'Senin zaten bu grupta aktif veya bekleyen bir oyunun var.',
+    groupGameCreated: (name, size, gameId) =>
 `👥 ${name} bir grup oyunu başlattı!
 Tahta: ${size}x${size}
+Oyun ID: #${gameId}
 
-Katılmak için aşağıdaki butona bas veya birini mention ederek davet et.`,
+Katılmak için aşağıdaki butona bas.`,
     join: '✅ Katıl',
-    joinedGame: (xName, oName, turnName, size) =>
+    joinedGame: (xName, oName, turnName, size, gameId) =>
 `🎮 Grup oyunu başladı!
 
+Oyun ID: #${gameId}
 Tahta: ${size}x${size}
 ❌ ${xName}
 ⭕ ${oName}
@@ -204,7 +206,7 @@ Tahta: ${size}x${size}
     playerXWin: (name) => `🏆 Kazanan: ${name} ❌`,
     playerOWin: (name) => `🏆 Kazanan: ${name} ⭕`,
     gameDraw: '🤝 Oyun berabere bitti!',
-    turnText: (name, symbol) => `Sıra: ${name} ${symbol}`,
+    turnText: (name, symbol, gameId) => `Oyun #${gameId}\nSıra: ${name} ${symbol}`,
     leaderboardEmpty: 'Henüz veri yok.',
     gameCancelled: '🛑 Oyun iptal edildi.',
     noPermissionCancel: 'Bu oyunu iptal etme yetkin yok.',
@@ -214,16 +216,14 @@ Tahta: ${size}x${size}
     selfJoinError: 'Kendi oyununa ikinci oyuncu olarak katılamazsın.',
     supportText: 'Destek için aşağıdaki butona bas.',
     inviteExample: 'Birini mention ederek davet etmek için örnek:\n/groupgame @kullaniciadi',
-    invitedText: (starter, invited, size) =>
+    invitedText: (starter, invited, size, gameId) =>
 `🎯 ${starter} seni XO oyununa davet etti ${invited}
+Oyun ID: #${gameId}
 Tahta: ${size}x${size}
 
 Katılmak için aşağıdaki butona bas.`,
-    rematchOffered: (name) => `🔁 ${name} rövanş istiyor.`,
     rematchAccepted: '🔁 Rövanş başladı!',
-    rematchNeedBoth: 'Rövanş için iki oyuncunun da onayı gerekir.',
     rematchWaiting: 'Diğer oyuncunun rövanşı kabul etmesi bekleniyor.',
-    mentionNotFound: 'Etiketlenen kullanıcı bulunamadı.',
     onlyInvitedCanJoin: 'Bu oyuna sadece davet edilen kişi katılabilir.'
   },
   en: {
@@ -290,16 +290,18 @@ Choose an option from the menu below.`,
     langSetTr: 'Dil Türkçe olarak ayarlandı.',
     langSetEn: 'Language set to English.',
     onlyGroups: 'This feature can only be used in groups.',
-    gameAlreadyExists: 'There is already an active or pending game in this group.',
-    groupGameCreated: (name, size) =>
+    gameAlreadyExists: 'You already have an active or pending game in this group.',
+    groupGameCreated: (name, size, gameId) =>
 `👥 ${name} started a group game!
 Board: ${size}x${size}
+Game ID: #${gameId}
 
-Press the button below to join or invite someone by mention.`,
+Press the button below to join.`,
     join: '✅ Join',
-    joinedGame: (xName, oName, turnName, size) =>
+    joinedGame: (xName, oName, turnName, size, gameId) =>
 `🎮 Group game started!
 
+Game ID: #${gameId}
 Board: ${size}x${size}
 ❌ ${xName}
 ⭕ ${oName}
@@ -310,7 +312,7 @@ First turn: ${turnName}`,
     playerXWin: (name) => `🏆 Winner: ${name} ❌`,
     playerOWin: (name) => `🏆 Winner: ${name} ⭕`,
     gameDraw: '🤝 The game ended in a draw!',
-    turnText: (name, symbol) => `Turn: ${name} ${symbol}`,
+    turnText: (name, symbol, gameId) => `Game #${gameId}\nTurn: ${name} ${symbol}`,
     leaderboardEmpty: 'No data yet.',
     gameCancelled: '🛑 Game cancelled.',
     noPermissionCancel: 'You do not have permission to cancel this game.',
@@ -320,16 +322,14 @@ First turn: ${turnName}`,
     selfJoinError: 'You cannot join your own game as second player.',
     supportText: 'Tap the button below for support.',
     inviteExample: 'Example invite:\n/groupgame @username',
-    invitedText: (starter, invited, size) =>
+    invitedText: (starter, invited, size, gameId) =>
 `🎯 ${starter} invited you to XO game ${invited}
+Game ID: #${gameId}
 Board: ${size}x${size}
 
 Press the button below to join.`,
-    rematchOffered: (name) => `🔁 ${name} wants a rematch.`,
     rematchAccepted: '🔁 Rematch started!',
-    rematchNeedBoth: 'Both players must confirm the rematch.',
     rematchWaiting: 'Waiting for the other player to accept rematch.',
-    mentionNotFound: 'Mentioned user not found.',
     onlyInvitedCanJoin: 'Only the invited user can join this game.'
   }
 };
@@ -346,40 +346,20 @@ function t(userId, key, ...args) {
 // ==============================
 
 const singleGames = new Map(); // userId
-const groupGames = new Map(); // chatId
-
-// group game structure:
-// {
-//   type: 'pending'|'active'|'finished',
-//   size,
-//   board,
-//   playerX,
-//   playerO,
-//   invitedUserId: number|null,
-//   turn: 'X'|'O',
-//   gameOver: boolean,
-//   rematch: { x: boolean, o: boolean }|null
-// }
+const groupGames = new Map(); // gameId
+let gameCounter = 1;
 
 // ==============================
 // HELPERS
 // ==============================
 
+function generateGameId(chatId) {
+  return `${Math.abs(chatId)}_${Date.now()}_${gameCounter++}`;
+}
+
 function getDisplayName(user) {
   if (!user) return 'User';
   return user.username ? `@${user.username}` : user.first_name || 'User';
-}
-
-function mentionHtml(user) {
-  const name = user.first_name || user.username || 'User';
-  return `<a href="tg://user?id=${user.id}">${escapeHtml(name)}</a>`;
-}
-
-function escapeHtml(text) {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
 }
 
 function buildLeaderboardText(requesterId) {
@@ -490,7 +470,7 @@ function renderCell(value) {
   return '▫️';
 }
 
-function boardKeyboard(board, size, prefix, gameOver = false, extraRows = []) {
+function boardKeyboard(board, size, prefix, gameId, gameOver = false, extraRows = []) {
   const rows = [];
 
   for (let r = 0; r < size; r++) {
@@ -500,7 +480,7 @@ function boardKeyboard(board, size, prefix, gameOver = false, extraRows = []) {
       row.push(
         Markup.button.callback(
           renderCell(board[i]),
-          gameOver ? 'ignore' : `${prefix}_${i}`
+          gameOver ? 'ignore' : `${prefix}_${gameId}_${i}`
         )
       );
     }
@@ -579,13 +559,13 @@ function difficultyKeyboard(userId, size) {
   ]);
 }
 
-function groupJoinKeyboard(userId, size) {
+function groupJoinKeyboard(userId, size, gameId) {
   const user = getUser(userId);
   const lang = user?.language || 'tr';
 
   return Markup.inlineKeyboard([
     [
-      Markup.button.callback(texts[lang].join, `group_join_${size}`)
+      Markup.button.callback(texts[lang].join, `group_join_${gameId}`)
     ],
     [
       Markup.button.callback(texts[lang].backMenu, 'back_menu')
@@ -608,18 +588,35 @@ function singleAfterGameButtons(userId, size, difficulty) {
   ];
 }
 
-function groupAfterGameButtons(userId, size) {
+function groupAfterGameButtons(userId, gameId) {
   const user = getUser(userId);
   const lang = user?.language || 'tr';
 
   return [
     [
-      Markup.button.callback(texts[lang].rematch, `group_rematch_${size}`)
-    ],
-    [
-      Markup.button.callback(texts[lang].backMenu, 'back_menu')
+      Markup.button.callback(texts[lang].rematch, `group_rematch_${gameId}`)
     ]
   ];
+}
+
+function findUserGroupGamesInChat(chatId, userId) {
+  return [...groupGames.values()].filter(
+    g =>
+      g.chatId === chatId &&
+      !g.deleted &&
+      [g.playerX?.id, g.playerO?.id].includes(userId) &&
+      ['pending', 'active', 'finished'].includes(g.type)
+  );
+}
+
+function findCancelableGameForUser(chatId, userId) {
+  return [...groupGames.values()].find(
+    g =>
+      g.chatId === chatId &&
+      !g.deleted &&
+      [g.playerX?.id, g.playerO?.id].includes(userId) &&
+      ['pending', 'active', 'finished'].includes(g.type)
+  );
 }
 
 // ==============================
@@ -794,14 +791,10 @@ bot.command('cancelgame', async (ctx) => {
     return ctx.reply(t(userId, 'gameCancelled'), mainMenu(userId));
   }
 
-  const game = groupGames.get(chatId);
+  const game = findCancelableGameForUser(chatId, userId);
   if (game) {
-    const allowed = [game.playerX?.id, game.playerO?.id].includes(userId);
-    if (!allowed) {
-      return ctx.reply(t(userId, 'noPermissionCancel'));
-    }
-    groupGames.delete(chatId);
-    return ctx.reply(t(userId, 'gameCancelled'), mainMenu(userId));
+    groupGames.delete(game.gameId);
+    return ctx.reply(`🛑 Oyun #${game.gameId} iptal edildi.`, mainMenu(userId));
   }
 
   return ctx.reply(t(userId, 'noActiveGame'));
@@ -818,9 +811,6 @@ bot.command('groupgame', async (ctx) => {
   if (mention && !mention.startsWith('@')) {
     return ctx.reply(t(ctx.from.id, 'inviteExample'));
   }
-
-  const pendingInvites = ctx.state || {};
-  pendingInvites.groupMention = mention;
 
   await ctx.reply(t(ctx.from.id, 'selectGroupBoard'), boardSizeKeyboard('size_group'));
 });
@@ -889,15 +879,10 @@ bot.action('menu_cancel', async (ctx) => {
     return ctx.answerCbQuery();
   }
 
-  const game = groupGames.get(chatId);
+  const game = findCancelableGameForUser(chatId, userId);
   if (game) {
-    const allowed = [game.playerX?.id, game.playerO?.id].includes(userId);
-    if (!allowed) {
-      await ctx.answerCbQuery(t(userId, 'noPermissionCancel'));
-      return;
-    }
-    groupGames.delete(chatId);
-    await ctx.editMessageText(t(userId, 'gameCancelled'), mainMenu(userId));
+    groupGames.delete(game.gameId);
+    await ctx.editMessageText(`🛑 Oyun #${game.gameId} iptal edildi.`, mainMenu(userId));
     return ctx.answerCbQuery();
   }
 
@@ -954,12 +939,12 @@ bot.action(/^diff_(3|4|5)_(easy|medium|hard)$/, async (ctx) => {
 
   await ctx.editMessageText(
     `${t(userId, 'gameStarted')}\n\n🎲 Tahta: ${size}x${size}`,
-    boardKeyboard(createBoard(size), size, 'singlemove')
+    boardKeyboard(createBoard(size), size, 'singlemove', 'single')
   );
   await ctx.answerCbQuery();
 });
 
-bot.action(/^singlemove_(\d+)$/, async (ctx) => {
+bot.action(/^singlemove_single_(\d+)$/, async (ctx) => {
   ensureUser(ctx.from);
 
   const userId = ctx.from.id;
@@ -1002,6 +987,7 @@ bot.action(/^singlemove_(\d+)$/, async (ctx) => {
         game.board,
         game.size,
         'singlemove',
+        'single',
         true,
         singleAfterGameButtons(userId, game.size, game.difficulty)
       )
@@ -1039,6 +1025,7 @@ bot.action(/^singlemove_(\d+)$/, async (ctx) => {
         game.board,
         game.size,
         'singlemove',
+        'single',
         true,
         singleAfterGameButtons(userId, game.size, game.difficulty)
       )
@@ -1050,7 +1037,7 @@ bot.action(/^singlemove_(\d+)$/, async (ctx) => {
 
   await ctx.editMessageText(
     `${t(userId, 'yourTurn')}\n\n🎲 Tahta: ${game.size}x${game.size}`,
-    boardKeyboard(game.board, game.size, 'singlemove')
+    boardKeyboard(game.board, game.size, 'singlemove', 'single')
   );
 
   await ctx.answerCbQuery();
@@ -1071,7 +1058,7 @@ bot.action(/^rematch_single_(3|4|5)_(easy|medium|hard)$/, async (ctx) => {
 
   await ctx.editMessageText(
     `${t(userId, 'gameStarted')}\n\n🎲 Tahta: ${size}x${size}`,
-    boardKeyboard(createBoard(size), size, 'singlemove')
+    boardKeyboard(createBoard(size), size, 'singlemove', 'single')
   );
 
   await ctx.answerCbQuery();
@@ -1092,43 +1079,42 @@ bot.action(/^size_group_(3|4|5)$/, async (ctx) => {
   const size = Number(ctx.match[1]);
   const chatId = ctx.chat.id;
 
-  if (groupGames.has(chatId)) {
+  const myGames = findUserGroupGamesInChat(chatId, ctx.from.id);
+  if (myGames.some(g => g.type === 'pending' || g.type === 'active')) {
     await ctx.answerCbQuery(t(ctx.from.id, 'gameAlreadyExists'));
     return;
   }
 
-  let invitedUserId = null;
-  let inviteText = '';
+  const gameId = generateGameId(chatId);
 
-  if (ctx.update.callback_query?.message?.reply_to_message?.entities) {
-    // boş
-  }
-
-  groupGames.set(chatId, {
+  groupGames.set(gameId, {
+    gameId,
+    chatId,
     type: 'pending',
     size,
     board: createBoard(size),
     playerX: ctx.from,
     playerO: null,
-    invitedUserId,
+    invitedUserId: null,
+    invitedUsername: null,
     turn: 'X',
     gameOver: false,
     rematch: null
   });
 
   await ctx.editMessageText(
-    `${t(ctx.from.id, 'groupGameCreated', getDisplayName(ctx.from), size)}\n\n${t(ctx.from.id, 'inviteExample')}${inviteText ? '\n' + inviteText : ''}`,
-    groupJoinKeyboard(ctx.from.id, size)
+    t(ctx.from.id, 'groupGameCreated', getDisplayName(ctx.from), size, gameId),
+    groupJoinKeyboard(ctx.from.id, size, gameId)
   );
 
   await ctx.answerCbQuery();
 });
 
-bot.action(/^group_join_(3|4|5)$/, async (ctx) => {
+bot.action(/^group_join_(.+)$/, async (ctx) => {
   ensureUser(ctx.from);
 
-  const chatId = ctx.chat.id;
-  const game = groupGames.get(chatId);
+  const gameId = ctx.match[1];
+  const game = groupGames.get(gameId);
 
   if (!game) {
     await ctx.answerCbQuery(t(ctx.from.id, 'noActiveGame'));
@@ -1160,18 +1146,19 @@ bot.action(/^group_join_(3|4|5)$/, async (ctx) => {
   const turnName = getDisplayName(game.playerX);
 
   await ctx.editMessageText(
-    t(game.playerX.id, 'joinedGame', xName, oName, turnName, game.size),
-    boardKeyboard(game.board, game.size, 'groupmove')
+    t(game.playerX.id, 'joinedGame', xName, oName, turnName, game.size, game.gameId),
+    boardKeyboard(game.board, game.size, 'groupmove', game.gameId)
   );
 
   await ctx.answerCbQuery();
 });
 
-bot.action(/^groupmove_(\d+)$/, async (ctx) => {
+bot.action(/^groupmove_(.+)_(\d+)$/, async (ctx) => {
   ensureUser(ctx.from);
 
-  const chatId = ctx.chat.id;
-  const game = groupGames.get(chatId);
+  const gameId = ctx.match[1];
+  const index = Number(ctx.match[2]);
+  const game = groupGames.get(gameId);
 
   if (!game || game.type !== 'active' || game.gameOver) {
     await ctx.answerCbQuery(t(ctx.from.id, 'noActiveGame'));
@@ -1189,8 +1176,6 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery(t(ctx.from.id, 'notYourTurn'));
     return;
   }
-
-  const index = Number(ctx.match[1]);
 
   if (game.board[index] !== '') {
     await ctx.answerCbQuery(t(ctx.from.id, 'cellBusy'));
@@ -1211,13 +1196,14 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
       addMultiResult(game.playerO.id, 'loss');
 
       await ctx.editMessageText(
-        `${t(game.playerX.id, 'playerXWin', getDisplayName(game.playerX))}\n\n🎲 Tahta: ${game.size}x${game.size}`,
+        `${t(game.playerX.id, 'playerXWin', getDisplayName(game.playerX))}\n\n🎲 Oyun #${game.gameId}\nTahta: ${game.size}x${game.size}`,
         boardKeyboard(
           game.board,
           game.size,
           'groupmove',
+          game.gameId,
           true,
-          groupAfterGameButtons(game.playerX.id, game.size)
+          groupAfterGameButtons(game.playerX.id, game.gameId)
         )
       );
     } else if (result === 'O') {
@@ -1225,13 +1211,14 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
       addMultiResult(game.playerX.id, 'loss');
 
       await ctx.editMessageText(
-        `${t(game.playerO.id, 'playerOWin', getDisplayName(game.playerO))}\n\n🎲 Tahta: ${game.size}x${game.size}`,
+        `${t(game.playerO.id, 'playerOWin', getDisplayName(game.playerO))}\n\n🎲 Oyun #${game.gameId}\nTahta: ${game.size}x${game.size}`,
         boardKeyboard(
           game.board,
           game.size,
           'groupmove',
+          game.gameId,
           true,
-          groupAfterGameButtons(game.playerO.id, game.size)
+          groupAfterGameButtons(game.playerO.id, game.gameId)
         )
       );
     } else {
@@ -1239,13 +1226,14 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
       addMultiResult(game.playerO.id, 'draw');
 
       await ctx.editMessageText(
-        `${t(game.playerX.id, 'gameDraw')}\n\n🎲 Tahta: ${game.size}x${game.size}`,
+        `${t(game.playerX.id, 'gameDraw')}\n\n🎲 Oyun #${game.gameId}\nTahta: ${game.size}x${game.size}`,
         boardKeyboard(
           game.board,
           game.size,
           'groupmove',
+          game.gameId,
           true,
-          groupAfterGameButtons(game.playerX.id, game.size)
+          groupAfterGameButtons(game.playerX.id, game.gameId)
         )
       );
     }
@@ -1259,18 +1247,18 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
   const nextSymbol = game.turn === 'X' ? '❌' : '⭕';
 
   await ctx.editMessageText(
-    t(ctx.from.id, 'turnText', getDisplayName(nextPlayer), nextSymbol),
-    boardKeyboard(game.board, game.size, 'groupmove')
+    t(ctx.from.id, 'turnText', getDisplayName(nextPlayer), nextSymbol, game.gameId),
+    boardKeyboard(game.board, game.size, 'groupmove', game.gameId)
   );
 
   await ctx.answerCbQuery();
 });
 
-bot.action(/^group_rematch_(3|4|5)$/, async (ctx) => {
+bot.action(/^group_rematch_(.+)$/, async (ctx) => {
   ensureUser(ctx.from);
 
-  const chatId = ctx.chat.id;
-  const game = groupGames.get(chatId);
+  const gameId = ctx.match[1];
+  const game = groupGames.get(gameId);
 
   if (!game || game.type !== 'finished') {
     await ctx.answerCbQuery(t(ctx.from.id, 'noActiveGame'));
@@ -1297,8 +1285,8 @@ bot.action(/^group_rematch_(3|4|5)$/, async (ctx) => {
     game.rematch = { x: false, o: false };
 
     await ctx.editMessageText(
-      `${t(ctx.from.id, 'rematchAccepted')}\n\n${t(ctx.from.id, 'joinedGame', getDisplayName(game.playerX), getDisplayName(game.playerO), getDisplayName(game.playerX), game.size)}`,
-      boardKeyboard(game.board, game.size, 'groupmove')
+      `${t(ctx.from.id, 'rematchAccepted')}\n\n${t(ctx.from.id, 'joinedGame', getDisplayName(game.playerX), getDisplayName(game.playerO), getDisplayName(game.playerX), game.size, game.gameId)}`,
+      boardKeyboard(game.board, game.size, 'groupmove', game.gameId)
     );
 
     await ctx.answerCbQuery();
@@ -1331,24 +1319,27 @@ bot.on('text', async (ctx, next) => {
     }
 
     const chatId = ctx.chat.id;
-
-    if (groupGames.has(chatId)) {
+    const myGames = findUserGroupGamesInChat(chatId, ctx.from.id);
+    if (myGames.some(g => g.type === 'pending' || g.type === 'active')) {
       await ctx.reply(t(ctx.from.id, 'gameAlreadyExists'));
       return;
     }
 
-    await ctx.reply(t(ctx.from.id, 'selectGroupBoard'), Markup.inlineKeyboard([
-      [
-        Markup.button.callback(`3x3 | ${mention}`, `size_group_invite_3_${mention.slice(1)}`),
-        Markup.button.callback(`4x4 | ${mention}`, `size_group_invite_4_${mention.slice(1)}`)
-      ],
-      [
-        Markup.button.callback(`5x5 | ${mention}`, `size_group_invite_5_${mention.slice(1)}`)
-      ],
-      [
-        Markup.button.callback(t(ctx.from.id, 'backMenu'), 'back_menu')
-      ]
-    ]));
+    await ctx.reply(
+      t(ctx.from.id, 'selectGroupBoard'),
+      Markup.inlineKeyboard([
+        [
+          Markup.button.callback(`3x3 | ${mention}`, `size_group_invite_3_${mention.slice(1)}`),
+          Markup.button.callback(`4x4 | ${mention}`, `size_group_invite_4_${mention.slice(1)}`)
+        ],
+        [
+          Markup.button.callback(`5x5 | ${mention}`, `size_group_invite_5_${mention.slice(1)}`)
+        ],
+        [
+          Markup.button.callback(t(ctx.from.id, 'backMenu'), 'back_menu')
+        ]
+      ])
+    );
   } catch (e) {
     console.error(e);
   }
@@ -1366,12 +1357,17 @@ bot.action(/^size_group_invite_(3|4|5)_(.+)$/, async (ctx) => {
     return;
   }
 
-  if (groupGames.has(chatId)) {
+  const myGames = findUserGroupGamesInChat(chatId, ctx.from.id);
+  if (myGames.some(g => g.type === 'pending' || g.type === 'active')) {
     await ctx.answerCbQuery(t(ctx.from.id, 'gameAlreadyExists'));
     return;
   }
 
-  groupGames.set(chatId, {
+  const gameId = generateGameId(chatId);
+
+  groupGames.set(gameId, {
+    gameId,
+    chatId,
     type: 'pending',
     size,
     board: createBoard(size),
@@ -1385,9 +1381,9 @@ bot.action(/^size_group_invite_(3|4|5)_(.+)$/, async (ctx) => {
   });
 
   await ctx.editMessageText(
-    t(ctx.from.id, 'invitedText', getDisplayName(ctx.from), '@' + username, size),
+    t(ctx.from.id, 'invitedText', getDisplayName(ctx.from), '@' + username, size, gameId),
     Markup.inlineKeyboard([
-      [Markup.button.callback(t(ctx.from.id, 'join'), `group_join_invited_${size}_${username.toLowerCase()}`)],
+      [Markup.button.callback(t(ctx.from.id, 'join'), `group_join_invited_${gameId}`)],
       [Markup.button.callback(t(ctx.from.id, 'backMenu'), 'back_menu')]
     ])
   );
@@ -1395,11 +1391,11 @@ bot.action(/^size_group_invite_(3|4|5)_(.+)$/, async (ctx) => {
   await ctx.answerCbQuery();
 });
 
-bot.action(/^group_join_invited_(3|4|5)_(.+)$/, async (ctx) => {
+bot.action(/^group_join_invited_(.+)$/, async (ctx) => {
   ensureUser(ctx.from);
 
-  const chatId = ctx.chat.id;
-  const game = groupGames.get(chatId);
+  const gameId = ctx.match[1];
+  const game = groupGames.get(gameId);
 
   if (!game) {
     await ctx.answerCbQuery(t(ctx.from.id, 'noActiveGame'));
@@ -1428,8 +1424,8 @@ bot.action(/^group_join_invited_(3|4|5)_(.+)$/, async (ctx) => {
   game.rematch = null;
 
   await ctx.editMessageText(
-    t(ctx.from.id, 'joinedGame', getDisplayName(game.playerX), getDisplayName(game.playerO), getDisplayName(game.playerX), game.size),
-    boardKeyboard(game.board, game.size, 'groupmove')
+    t(ctx.from.id, 'joinedGame', getDisplayName(game.playerX), getDisplayName(game.playerO), getDisplayName(game.playerX), game.size, game.gameId),
+    boardKeyboard(game.board, game.size, 'groupmove', game.gameId)
   );
 
   await ctx.answerCbQuery();
