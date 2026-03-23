@@ -69,7 +69,7 @@ async function withLock(ctx, handler, type = 'default') {
 }
 
 // ==============================
-// DB
+// DB FAST CACHE
 // ==============================
 
 if (!fs.existsSync(DATA_DIR)) {
@@ -79,24 +79,40 @@ if (!fs.existsSync(DATA_FILE)) {
   fs.writeFileSync(DATA_FILE, JSON.stringify({ users: {} }, null, 2));
 }
 
-function loadDB() {
+let dbCache = { users: {} };
+let dbDirty = false;
+
+function loadDBFromDisk() {
   try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    dbCache = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
   } catch {
-    return { users: {} };
+    dbCache = { users: {} };
   }
 }
 
-function saveDB(db) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
+function saveDBToDisk() {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(dbCache, null, 2));
+    dbDirty = false;
+  } catch (e) {
+    console.error('DB save error:', e);
+  }
 }
 
+loadDBFromDisk();
+console.log('DB cache loaded. Users:', Object.keys(dbCache.users || {}).length);
+
+setInterval(() => {
+  if (dbDirty) {
+    saveDBToDisk();
+  }
+}, 10000);
+
 function ensureUser(user) {
-  const db = loadDB();
   const id = String(user.id);
 
-  if (!db.users[id]) {
-    db.users[id] = {
+  if (!dbCache.users[id]) {
+    dbCache.users[id] = {
       id: user.id,
       name: user.first_name || user.username || 'User',
       username: user.username || '',
@@ -108,55 +124,57 @@ function ensureUser(user) {
       multiplayerLosses: 0,
       multiplayerDraws: 0
     };
+    dbDirty = true;
   } else {
-    db.users[id].name = user.first_name || user.username || db.users[id].name;
-    db.users[id].username = user.username || db.users[id].username;
+    const oldName = dbCache.users[id].name;
+    const oldUsername = dbCache.users[id].username;
+
+    dbCache.users[id].name = user.first_name || user.username || dbCache.users[id].name;
+    dbCache.users[id].username = user.username || dbCache.users[id].username;
+
+    if (oldName !== dbCache.users[id].name || oldUsername !== dbCache.users[id].username) {
+      dbDirty = true;
+    }
   }
 
-  saveDB(db);
-  return db.users[id];
+  return dbCache.users[id];
 }
 
 function getUser(userId) {
-  const db = loadDB();
-  return db.users[String(userId)];
+  return dbCache.users[String(userId)];
 }
 
 function setLanguage(userId, lang) {
-  const db = loadDB();
   const id = String(userId);
-  if (!db.users[id]) return;
-  db.users[id].language = lang;
-  saveDB(db);
+  if (!dbCache.users[id]) return;
+  dbCache.users[id].language = lang;
+  dbDirty = true;
 }
 
 function addSingleResult(userId, result) {
-  const db = loadDB();
   const id = String(userId);
-  if (!db.users[id]) return;
+  if (!dbCache.users[id]) return;
 
-  if (result === 'win') db.users[id].wins++;
-  if (result === 'loss') db.users[id].losses++;
-  if (result === 'draw') db.users[id].draws++;
+  if (result === 'win') dbCache.users[id].wins++;
+  if (result === 'loss') dbCache.users[id].losses++;
+  if (result === 'draw') dbCache.users[id].draws++;
 
-  saveDB(db);
+  dbDirty = true;
 }
 
 function addMultiResult(userId, result) {
-  const db = loadDB();
   const id = String(userId);
-  if (!db.users[id]) return;
+  if (!dbCache.users[id]) return;
 
-  if (result === 'win') db.users[id].multiplayerWins++;
-  if (result === 'loss') db.users[id].multiplayerLosses++;
-  if (result === 'draw') db.users[id].multiplayerDraws++;
+  if (result === 'win') dbCache.users[id].multiplayerWins++;
+  if (result === 'loss') dbCache.users[id].multiplayerLosses++;
+  if (result === 'draw') dbCache.users[id].multiplayerDraws++;
 
-  saveDB(db);
+  dbDirty = true;
 }
 
 function getLeaderboard() {
-  const db = loadDB();
-  return Object.values(db.users)
+  return Object.values(dbCache.users)
     .map((u) => ({
       ...u,
       totalWins: u.wins + u.multiplayerWins,
@@ -401,6 +419,18 @@ function getDisplayName(user) {
   return user.username ? `@${user.username}` : user.first_name || 'User';
 }
 
+function getProfileText(userId) {
+  const u = getUser(userId);
+  if (!u) return 'Profil bulunamadı.';
+
+  const list = getLeaderboard();
+  const rankIndex = list.findIndex((item) => String(item.id) === String(userId));
+  const rank = rankIndex >= 0 ? rankIndex + 1 : '-';
+  const points = ((u.wins + u.multiplayerWins) * 3) + (u.draws + u.multiplayerDraws);
+
+  return t(userId, 'profile', u, points, rank);
+}
+
 function buildLeaderboardText(requesterId) {
   const list = getLeaderboard();
   if (!list.length) return t(requesterId, 'leaderboardEmpty');
@@ -414,25 +444,12 @@ function buildLeaderboardText(requesterId) {
   return text;
 }
 
-function getProfileText(userId) {
-  const u = getUser(userId);
-  if (!u) return 'Profil bulunamadı.';
-
-  const list = getLeaderboard();
-  const rankIndex = list.findIndex((item) => String(item.id) === String(userId));
-  const rank = rankIndex >= 0 ? rankIndex + 1 : '-';
-  const points = ((u.wins + u.multiplayerWins) * 3) + (u.draws + u.multiplayerDraws);
-
-  return t(userId, 'profile', u, points, rank);
-}
-
 function createBoard(size) {
   return Array(size * size).fill('');
 }
 
 function neededToWin(size) {
-  if (size <= 4) return size;
-  return 4;
+  return size;
 }
 
 function checkWinner(board, size) {
@@ -573,8 +590,7 @@ function boardSizeKeyboard(prefix) {
   return Markup.inlineKeyboard([
     [
       Markup.button.callback('3x3', `${prefix}_3`),
-      Markup.button.callback('4x4', `${prefix}_4`),
-      Markup.button.callback('5x5', `${prefix}_5`)
+      Markup.button.callback('4x4', `${prefix}_4`)
     ],
     [
       Markup.button.callback('⬅️ Menu', 'back_menu')
@@ -603,12 +619,8 @@ function groupJoinKeyboard(userId, size) {
   const lang = user?.language || 'tr';
 
   return Markup.inlineKeyboard([
-    [
-      Markup.button.callback(texts[lang].join, `group_join_${size}`)
-    ],
-    [
-      Markup.button.callback(texts[lang].backMenu, 'back_menu')
-    ]
+    [Markup.button.callback(texts[lang].join, `group_join_${size}`)],
+    [Markup.button.callback(texts[lang].backMenu, 'back_menu')]
   ]);
 }
 
@@ -621,9 +633,7 @@ function singleAfterGameButtons(userId, size, difficulty) {
       Markup.button.callback(texts[lang].rematch, `rematch_single_${size}_${difficulty}`),
       Markup.button.callback(texts[lang].newGame, 'menu_newgame')
     ],
-    [
-      Markup.button.callback(texts[lang].backMenu, 'back_menu')
-    ]
+    [Markup.button.callback(texts[lang].backMenu, 'back_menu')]
   ];
 }
 
@@ -632,12 +642,8 @@ function groupAfterGameButtons(userId, size) {
   const lang = user?.language || 'tr';
 
   return [
-    [
-      Markup.button.callback(texts[lang].rematch, `group_rematch_${size}`)
-    ],
-    [
-      Markup.button.callback(texts[lang].backMenu, 'back_menu')
-    ]
+    [Markup.button.callback(texts[lang].rematch, `group_rematch_${size}`)],
+    [Markup.button.callback(texts[lang].backMenu, 'back_menu')]
   ];
 }
 
@@ -844,12 +850,7 @@ bot.command('groupgame', async (ctx) => {
           Markup.button.callback(`3x3 | ${mention}`, `size_group_invite_3_${mention.slice(1).toLowerCase()}`),
           Markup.button.callback(`4x4 | ${mention}`, `size_group_invite_4_${mention.slice(1).toLowerCase()}`)
         ],
-        [
-          Markup.button.callback(`5x5 | ${mention}`, `size_group_invite_5_${mention.slice(1).toLowerCase()}`)
-        ],
-        [
-          Markup.button.callback(t(ctx.from.id, 'backMenu'), 'back_menu')
-        ]
+        [Markup.button.callback(t(ctx.from.id, 'backMenu'), 'back_menu')]
       ])
     );
   }
@@ -875,7 +876,7 @@ bot.action('menu_groupgame', async (ctx) => {
       ctx,
       t(ctx.from.id, 'startGroupOnly'),
       Markup.inlineKeyboard([
-        [Markup.button.url(t(ctx.from.id, 'menuAddGroup'), ADD_GROUP_LINK)],
+        [Markup.button.url(texts[getUser(ctx.from.id)?.language || 'tr'].menuAddGroup, ADD_GROUP_LINK)],
         [Markup.button.callback(t(ctx.from.id, 'backMenu'), 'back_menu')]
       ])
     );
@@ -899,20 +900,21 @@ bot.action('menu_top', async (ctx) => {
   await safeAnswerCbQuery(ctx);
 });
 
-bot.action('menu_lang', async (ctx) => {
-  ensureUser(ctx.from);
-  await safeEditMessageText(ctx, t(ctx.from.id, 'languageChoose'), languageKeyboard());
-  await safeAnswerCbQuery(ctx);
-});
-
 bot.action('menu_profile', async (ctx) => {
   ensureUser(ctx.from);
   await safeEditMessageText(ctx, getProfileText(ctx.from.id), mainMenu(ctx.from.id));
   await safeAnswerCbQuery(ctx);
 });
 
+bot.action('menu_lang', async (ctx) => {
+  ensureUser(ctx.from);
+  await safeEditMessageText(ctx, t(ctx.from.id, 'languageChoose'), languageKeyboard());
+  await safeAnswerCbQuery(ctx);
+});
+
 bot.action('menu_cancel', async (ctx) => {
   ensureUser(ctx.from);
+
   const userId = ctx.from.id;
   const chatId = ctx.chat.id;
 
@@ -965,7 +967,7 @@ bot.action('lang_en', async (ctx) => {
 // SINGLEPLAYER
 // ==============================
 
-bot.action(/^size_single_(3|4|5)$/, async (ctx) => {
+bot.action(/^size_single_(3|4)$/, async (ctx) => {
   await withLock(ctx, async () => {
     ensureUser(ctx.from);
     const size = Number(ctx.match[1]);
@@ -974,7 +976,7 @@ bot.action(/^size_single_(3|4|5)$/, async (ctx) => {
   }, 'size_single');
 });
 
-bot.action(/^diff_(3|4|5)_(easy|medium|hard)$/, async (ctx) => {
+bot.action(/^diff_(3|4)_(easy|medium|hard)$/, async (ctx) => {
   await withLock(ctx, async () => {
     ensureUser(ctx.from);
     const size = Number(ctx.match[1]);
@@ -1003,6 +1005,7 @@ bot.action(/^diff_(3|4|5)_(easy|medium|hard)$/, async (ctx) => {
 bot.action(/^singlemove_(\d+)$/, async (ctx) => {
   await withLock(ctx, async () => {
     ensureUser(ctx.from);
+
     const userId = ctx.from.id;
     const game = singleGames.get(userId);
 
@@ -1040,13 +1043,7 @@ bot.action(/^singlemove_(\d+)$/, async (ctx) => {
       await safeEditMessageText(
         ctx,
         `${text}\n\n🎲 Tahta: ${game.size}x${game.size}`,
-        boardKeyboard(
-          game.board,
-          game.size,
-          'singlemove',
-          true,
-          singleAfterGameButtons(userId, game.size, game.difficulty)
-        )
+        boardKeyboard(game.board, game.size, 'singlemove', true, singleAfterGameButtons(userId, game.size, game.difficulty))
       );
 
       await safeAnswerCbQuery(ctx);
@@ -1078,13 +1075,7 @@ bot.action(/^singlemove_(\d+)$/, async (ctx) => {
       await safeEditMessageText(
         ctx,
         `${text}\n\n🎲 Tahta: ${game.size}x${game.size}`,
-        boardKeyboard(
-          game.board,
-          game.size,
-          'singlemove',
-          true,
-          singleAfterGameButtons(userId, game.size, game.difficulty)
-        )
+        boardKeyboard(game.board, game.size, 'singlemove', true, singleAfterGameButtons(userId, game.size, game.difficulty))
       );
 
       await safeAnswerCbQuery(ctx);
@@ -1101,9 +1092,10 @@ bot.action(/^singlemove_(\d+)$/, async (ctx) => {
   }, 'singlemove');
 });
 
-bot.action(/^rematch_single_(3|4|5)_(easy|medium|hard)$/, async (ctx) => {
+bot.action(/^rematch_single_(3|4)_(easy|medium|hard)$/, async (ctx) => {
   await withLock(ctx, async () => {
     ensureUser(ctx.from);
+
     const size = Number(ctx.match[1]);
     const difficulty = ctx.match[2];
     const userId = ctx.from.id;
@@ -1131,7 +1123,7 @@ bot.action(/^rematch_single_(3|4|5)_(easy|medium|hard)$/, async (ctx) => {
 // GROUP
 // ==============================
 
-bot.action(/^size_group_(3|4|5)$/, async (ctx) => {
+bot.action(/^size_group_(3|4)$/, async (ctx) => {
   await withLock(ctx, async () => {
     ensureUser(ctx.from);
 
@@ -1170,7 +1162,7 @@ bot.action(/^size_group_(3|4|5)$/, async (ctx) => {
   }, 'group_create');
 });
 
-bot.action(/^size_group_invite_(3|4|5)_(.+)$/, async (ctx) => {
+bot.action(/^size_group_invite_(3|4)_(.+)$/, async (ctx) => {
   await withLock(ctx, async () => {
     ensureUser(ctx.from);
 
@@ -1208,7 +1200,7 @@ bot.action(/^size_group_invite_(3|4|5)_(.+)$/, async (ctx) => {
   }, 'group_create_invite');
 });
 
-bot.action(/^group_join_(3|4|5)$/, async (ctx) => {
+bot.action(/^group_join_(3|4)$/, async (ctx) => {
   await withLock(ctx, async () => {
     ensureUser(ctx.from);
 
@@ -1254,7 +1246,7 @@ bot.action(/^group_join_(3|4|5)$/, async (ctx) => {
   }, 'group_join');
 });
 
-bot.action(/^group_join_invited_(3|4|5)_(.+)$/, async (ctx) => {
+bot.action(/^group_join_invited_(3|4)_(.+)$/, async (ctx) => {
   await withLock(ctx, async () => {
     ensureUser(ctx.from);
 
@@ -1343,13 +1335,7 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
         await safeEditMessageText(
           ctx,
           `${t(game.playerX.id, 'playerXWin', getDisplayName(game.playerX))}\n\n🎲 Tahta: ${game.size}x${game.size}`,
-          boardKeyboard(
-            game.board,
-            game.size,
-            'groupmove',
-            true,
-            groupAfterGameButtons(game.playerX.id, game.size)
-          )
+          boardKeyboard(game.board, game.size, 'groupmove', true, groupAfterGameButtons(game.playerX.id, game.size))
         );
       } else if (result === 'O') {
         addMultiResult(game.playerO.id, 'win');
@@ -1358,13 +1344,7 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
         await safeEditMessageText(
           ctx,
           `${t(game.playerO.id, 'playerOWin', getDisplayName(game.playerO))}\n\n🎲 Tahta: ${game.size}x${game.size}`,
-          boardKeyboard(
-            game.board,
-            game.size,
-            'groupmove',
-            true,
-            groupAfterGameButtons(game.playerO.id, game.size)
-          )
+          boardKeyboard(game.board, game.size, 'groupmove', true, groupAfterGameButtons(game.playerO.id, game.size))
         );
       } else {
         addMultiResult(game.playerX.id, 'draw');
@@ -1373,13 +1353,7 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
         await safeEditMessageText(
           ctx,
           `${t(game.playerX.id, 'gameDraw')}\n\n🎲 Tahta: ${game.size}x${game.size}`,
-          boardKeyboard(
-            game.board,
-            game.size,
-            'groupmove',
-            true,
-            groupAfterGameButtons(game.playerX.id, game.size)
-          )
+          boardKeyboard(game.board, game.size, 'groupmove', true, groupAfterGameButtons(game.playerX.id, game.size))
         );
       }
 
@@ -1401,7 +1375,7 @@ bot.action(/^groupmove_(\d+)$/, async (ctx) => {
   }, 'groupmove');
 });
 
-bot.action(/^group_rematch_(3|4|5)$/, async (ctx) => {
+bot.action(/^group_rematch_(3|4)$/, async (ctx) => {
   await withLock(ctx, async () => {
     ensureUser(ctx.from);
 
@@ -1474,5 +1448,12 @@ bot.launch({ dropPendingUpdates: true })
     console.error('Launch error:', err);
   });
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => {
+  if (dbDirty) saveDBToDisk();
+  bot.stop('SIGINT');
+});
+
+process.once('SIGTERM', () => {
+  if (dbDirty) saveDBToDisk();
+  bot.stop('SIGTERM');
+});
